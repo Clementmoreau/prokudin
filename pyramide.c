@@ -53,12 +53,9 @@ static void zoom_out_by_factor_two(float *out, int ow, int oh,
 	for (int j = 0; j < oh; j++)
         for (int i = 0; i < ow; i++)
         {
-            float a[4];
-            a[0] = getpixel_0(in, iw, ih, 2*i, 2*j);
-            a[1] = getpixel_0(in, iw, ih, 2*i+1, 2*j);
-            a[2] = getpixel_0(in, iw, ih, 2*i, 2*j+1);
-            a[3] = getpixel_0(in, iw, ih, 2*i+1, 2*j+1);
-            out[ow*j + i] = (a[0] + a[1] + a[2] + a[3])/4;
+            float a;
+            a = getpixel_0(in, iw, ih, 2*i, 2*j);
+            out[ow*j + i] = a/4;
         }
 }
 
