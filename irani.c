@@ -260,7 +260,7 @@ void hessian_correlation_surface(float *im, int w, int h, float *out[4])
 // compute A (square matrix with length = number of parameters, here 8) with the hessian and the matrix X(i,j)
 //
 
-void A_matrix(float *im, int w, int h, float out[64])
+void A_matrix_8(float *im, int w, int h, float out[64])
 {
     hessian_correlation_surface(im, w, h, hess);
     
@@ -287,7 +287,7 @@ void A_matrix(float *im, int w, int h, float out[64])
 //compute B (vector with same length as the number of parameters, here 8) cith the gradient and the matrix X(i,j)
 //
 
-void B_matrix(float *im, int w, int h, float out[8])
+void B_matrix_8(float *im, int w, int h, float out[8])
 {
     grad_correlation_surface(im, w, h, grad);
     
@@ -309,9 +309,15 @@ void B_matrix(float *im, int w, int h, float out[8])
 
 }
 
-void delta_displacement(float *A, float *B, float out[8])
+//find displacement
+//
+// A, B : matrices computed with A_matrix and B_matrix
+
+void delta_displacement_8(float *A, float *B, float out[8])
 {
     inverse_matrix(A, A1);
+    
+    //matricial product between A-1 and B
     for(int j = 0 ; j < 8 ; j++)
     {
         out2[j] = 0;
@@ -353,8 +359,8 @@ int main(int argc, char **argv)
     
     for(int i=0 ; i < 4 ; i++)
     {
-        A_matrix(der1[i], w, h, A[i]);
-        B_matrix(der2[i], w, h, B[i])
+        A_matrix_8(der1[i], w, h, A[i]);
+        B_matrix_8(der2[i], w, h, B[i])
     }
     
     for(int j = 0 ; j < h ; j++)
@@ -365,7 +371,7 @@ int main(int argc, char **argv)
         }
 
     // compute displacement
-    delta_displacement(AA, BB, delta);
+    delta_displacement_8(AA, BB, delta);
     
     //allocate space for the output image
     float *out2 = malloc(w*h*sizeof(float));
