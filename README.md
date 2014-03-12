@@ -45,5 +45,7 @@ usage : demo_orsa_homography imgInA.png imgInB.png allMatches.txt inMatches.txt 
    
 usage : main imgIn.png der1.png der2.png der3.png der4.png
 
+* homographie.sh : script which takes the original glass negative and return the registered image (with orsa-homography method)
+
 
 
