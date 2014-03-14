@@ -285,8 +285,12 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
             for(int k = -5; k <= 5 ; k++)
                 for(int l = -5; l <= 5 ; l++)
                 {
+                    int i2=i+k;
+                    int j2=j+l;
+                    int ii2=ii+k;
+                    int jj2=jj+l;
                     
-                    S = S + (getpixel_0(im1, w, h, i, j)-getpixel_0(mean1, w, h, i, j))*(getpixel_0(im2, w, h, ii, jj)-getpixel_0(mean2, w, h, ii, jj));
+                    S = S + (getpixel_0(im1, w, h, i2, j2)-getpixel_0(mean1, w, h, i, j))*(getpixel_0(im2, w, h, ii2, jj2)-getpixel_0(mean2, w, h, ii, jj));
                 }
             
             out[j*w+i] = S/(norm1[j*w+i]*norm2[jj*w+ii]);
@@ -306,6 +310,8 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
 
 void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2])
 {
+    printf("Calcul du gradient... \n");
+    
     float *surf00 = malloc(w*h*sizeof(float));
     float *surf01 = malloc(w*h*sizeof(float));
     float *surf10 = malloc(w*h*sizeof(float));
@@ -334,6 +340,8 @@ void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2
 
 void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *out[4])
 {
+    printf("Calcul de la hessienne... \n");
+    
     float *surf00 = malloc(w*h*sizeof(float));
     float *surf01 = malloc(w*h*sizeof(float));
     float *surf10 = malloc(w*h*sizeof(float));
@@ -431,7 +439,7 @@ void B_matrix_8(float *im1, float *im2, int w, int h, float out[8])
             
             for(int k = 0 ; k < 8 ; k++)
                 {
-                    out[k] = out[k] + grad[0][j*w+i]*X[k] + grad[1][j*w+i]*X[8+k];
+                    out[k] = out[k] - grad[0][j*w+i]*X[k] - grad[1][j*w+i]*X[8+k];
                 }
         }
     
@@ -444,7 +452,7 @@ void B_matrix_8(float *im1, float *im2, int w, int h, float out[8])
 //
 // A, B : matrices computed with A_matrix and B_matrix
 
-void delta_displacement_8(float *A, float *B, float out[8])
+void delta_displacement_8(float *A, float *B, float *out)
 {
     antislash_symmetric_positive_definite(out, A, B, 8);
 }
@@ -455,7 +463,7 @@ int main(int argc, char **argv)
 {
     // process input arguments
     if (argc != 4) {
-        fprintf(stderr, "usage:\n \t%s imageIn1 imageIn2 imageWarped2 \n");
+        fprintf(stderr, "usage:\n \t imageIn1 imageIn2 imageWarped2 \n");
         //                         0     1       2        3
     }
     
@@ -480,16 +488,21 @@ int main(int argc, char **argv)
     
     float delta[8];
     
+    printf("Calcul des derivees directionnelles... \n");
     
     //compute derivatives
     compute_directional_derivatives(im1, w, h, der1);
     compute_directional_derivatives(im2, w, h, der2);
     
+    
+    
     //compute A and B for each derivative and sum it
-    float *A[4];
-    float *B[4];
-    float *AA ;
-    float *BB ;
+    float A[4][64];
+    float B[4][8];
+    float AA[64] ;
+    float BB[8] ;
+    
+    printf("Calcul des matrices A et B... \n");
     
     for(int i=0 ; i < 4 ; i++)
     {
@@ -497,24 +510,38 @@ int main(int argc, char **argv)
         B_matrix_8(der1[i], der2[i], w, h, B[i]);
     }
     
-    for(int j = 0 ; j < h ; j++)
-        for(int i = 0 ; i < w ; i++)
+    
+    
+    for(int j = 0 ; j < 8 ; j++)
+        for(int i = 0 ; i < 8 ; i++)
         {
-            AA[j*w+i]=A[0][j*w+i]+A[1][j*w+i]+A[2][j*w+i]+A[3][j*w+i];
-            BB[j*w+i]=B[0][j*w+i]+B[1][j*w+i]+B[2][j*w+i]+B[3][j*w+i];
+            AA[j*8+i]=A[0][j*8+i]+A[1][j*8+i]+A[2][j*8+i]+A[3][j*8+i];
+           
         }
+    for(int j=0 ; j<8 ; j++)
+    {
+        BB[j]=B[0][j]+B[1][j]+B[2][j]+B[3][j];
+    }
 
+    printf("Calcul du vecteur delta... \n");
+    
     // compute displacement
     delta_displacement_8(AA, BB, delta);
+    
+    
     
     //allocate space for the output image
     float *out2 = malloc(w*h*sizeof(float));
     
+    printf("Warping... \n");
+    
     // warp image
     warping_8_parameters(im2, delta, w, h, out2);
     
+    printf("Warping : done \n");
+    
     //save the output image
-    iio_save_image_float(filename_ImgOut, out2, &w, &h);
+    iio_save_image_float(filename_ImgOut, out2, w, h);
     
     //cleanup and exit
     free(out2);
