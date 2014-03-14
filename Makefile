@@ -3,10 +3,10 @@ CC = c99
 LFLAGS = -ltiff -ljpeg -lpng -lm
 
 # NOTE: to change the optimization settings swap the following two lines
-CFLAGS = -g
 CFLAGS = -O3
+CFLAGS = -g
 
-all: cut3 join3 translation quantize registration main gauss pyramide irani
+all: cut3 join3 translation quantize registration main gauss pyramide irani echantillon
 
 install: all
 	cp cut3 /Users/clement/bin
@@ -18,6 +18,7 @@ install: all
 	cp gauss /Users/clement/bin
 	cp pyramide /Users/clement/bin
 	cp irani /Users/clement/bin
+	cp echantillon /Users/clement/bin
 
 cut3: cut3.c iio.c
 	$(CC) $(CFLAGS) iio.c cut3.c $(LFLAGS) -o cut3
@@ -45,6 +46,9 @@ pyramide: pyramide.c iio.c
 
 irani: irani.c iio.c
 	$(CC) $(CFLAGS) iio.c irani.c $(LFLAGS) -o irani
+
+echantillon : echantillon.c iio.c
+	$(CC) $(CFLAGS) iio.c echantillon.c $(LFLAGS) -o echantillon
 
 clean:
 	rm -f cut3 join3 translation quantize registration
