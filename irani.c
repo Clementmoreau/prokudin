@@ -26,7 +26,7 @@
 //
 // return value: color of the requested pixel
 //
-float getpixel_0(float *x, int w, int h, int i, int j)
+static float getpixel_0(float *x, int w, int h, int i, int j)
 {
 	if (i < 0 || j < 0 || i >= w || j >= h)
 		return 0;
@@ -36,8 +36,8 @@ float getpixel_0(float *x, int w, int h, int i, int j)
 
 // subprogram to solve Ax=B
 
-static int solvps(double *a,double *b,int n)
-{ double *p,*q,*r,*s,t;
+static int solvps(float *a,float *b,int n)
+{ float *p,*q,*r,*s,t;
     int j,k;
     for(j=0,p=a; j<n ;++j,p+=n+1){
         for(q=a+j*n; q<p ;++q) *p-= *q* *q;
@@ -60,10 +60,10 @@ static int solvps(double *a,double *b,int n)
 }
 
 // solve Ax=b
-int antislash_symmetric_positive_definite(double *x, double *A,double *b, int n)
+int antislash_symmetric_positive_definite(float *x, float *A, float *b, int n)
 {
-	double *inA = malloc(n*n*sizeof*inA);
-	double *inb = malloc(n*sizeof*inb);
+	float *inA = malloc(n*n*sizeof*inA);
+	float *inb = malloc(n*sizeof*inb);
 	for (int i = 0; i < n*n; i++)
 		inA[i] = A[i];
 	for (int i = 0; i < n; i++)
@@ -166,13 +166,6 @@ static float bicubic_interpolation_cell(float p[4][4], float x, float y)
 
 typedef float (*getpixel_operator)(float*,int,int,int,int);
 
-static float getpixel_0(float *x, int w, int h, int i, int j)
-{
-	if (i < 0 || i >= w || j < 0 || j >= h)
-		return 0;
-	return x[i+j*w];
-}
-
 float bicubic_interpolation(float *img, int w, int h, float x, float y)
 {
 	x -= 1;
@@ -251,7 +244,6 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
         for(int i = 0 ; i < w ; i++)
         {
             float S=0;
-            )
             for(int k = -5; k <= 5 ; k++)
                 for(int l = -5; l <= 5 ; l++)
                 {
@@ -273,6 +265,11 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
 
 void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, float *out)
 {
+    float *mean1 = malloc(w*h*sizeof(float));
+    float *mean2 = malloc(w*h*sizeof(float));
+    float *norm1 = malloc(w*h*sizeof(float));
+    float *norm2 = malloc(w*h*sizeof(float));
+    
     mean_window_11(im1, w, h, mean1);
     mean_window_11(im2, w, h, mean2);
     norm_2_window_11(im1, mean1, w, h, norm1);
@@ -294,6 +291,11 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
             
             out[j*w+i] = S/(norm1[j*w+i]*norm2[jj*w+ii]);
         }
+    
+    free(mean1);
+    free(mean2);
+    free(norm1);
+    free(norm2);
 }
 
 //compute the gradient of the correlation surface in (0,0)
@@ -302,11 +304,15 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
 // w, h : dimensions
 // out : gradient image (a 2x1 vector for each pixel)
 
-void grad_correlation_surface(float *im, int w, int h, float *out[2])
+void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2])
 {
-    correlation_surface(im, w, h, 0, 0, surf00);
-    correlation_surface(im, w, h, 1, 0, surf10);
-    correlation_surface(im, w, h, 0, 1, surf01);
+    float *surf00 = malloc(w*h*sizeof(float));
+    float *surf01 = malloc(w*h*sizeof(float));
+    float *surf10 = malloc(w*h*sizeof(float));
+    
+    correlation_surface(im1, im2, w, h, 0, 0, surf00);
+    correlation_surface(im1, im2, w, h, 1, 0, surf10);
+    correlation_surface(im1, im2, w, h, 0, 1, surf01);
     
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
@@ -315,6 +321,9 @@ void grad_correlation_surface(float *im, int w, int h, float *out[2])
             out[1][j*w+i] = surf01[j*w+i]-surf00[j*w+i];
         }
     
+    free(surf00);
+    free(surf01);
+    free(surf10);
 }
 
 // compute the hessian matrix of the correlation surface in (0,0)
@@ -323,14 +332,21 @@ void grad_correlation_surface(float *im, int w, int h, float *out[2])
 // w, h : dimensions
 // out : hessian image (a 2x2 matrix for each pixel)
 
-void hessian_correlation_surface(float *im, int w, int h, float *out[4])
+void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *out[4])
 {
-    correlation_surface(im, w, h, 0, 0, surf00);
-    correlation_surface(im, w, h, 1, 0, surf10);
-    correlation_surface(im, w, h, 0, 1, surf01);
-    correlation_surface(im, w, h, -1, 0, surf_10);
-    correlation_surface(im, w, h, 0, -1, surf0_1);
-    correlation_surface(im, w, h, 1, 1, surf11);
+    float *surf00 = malloc(w*h*sizeof(float));
+    float *surf01 = malloc(w*h*sizeof(float));
+    float *surf10 = malloc(w*h*sizeof(float));
+    float *surf0_1 = malloc(w*h*sizeof(float));
+    float *surf_10 = malloc(w*h*sizeof(float));
+    float *surf11 = malloc(w*h*sizeof(float));
+    
+    correlation_surface(im1, im2, w, h, 0, 0, surf00);
+    correlation_surface(im1, im2, w, h, 1, 0, surf10);
+    correlation_surface(im1, im2, w, h, 0, 1, surf01);
+    correlation_surface(im1, im2, w, h, -1, 0, surf_10);
+    correlation_surface(im1, im2, w, h, 0, -1, surf0_1);
+    correlation_surface(im1, im2, w, h, 1, 1, surf11);
     
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
@@ -341,14 +357,30 @@ void hessian_correlation_surface(float *im, int w, int h, float *out[4])
             out[3][j*w+i] = surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i];
         }
     
+    free(surf00);
+    free(surf01);
+    free(surf10);
+    free(surf0_1);
+    free(surf_10);
+    free(surf11);
+    
 }
 
 // compute A (square matrix with length = number of parameters, here 8) with the hessian and the matrix X(i,j)
 //
 
-void A_matrix_8(float *im, int w, int h, float out[64])
+void A_matrix_8(float *im1, float *im2, int w, int h, float out[64])
 {
-    hessian_correlation_surface(im, w, h, hess);
+    float *hess[4];
+    
+    for (int k=0; k<4; k++)
+    {
+        hess[k] = malloc(w*h*sizeof(float));
+    }
+    
+    float X[16];
+    
+    hessian_correlation_surface(im1, im2, w, h, hess);
     
     for(int k = 0 ; k < 8 ; k++)
         for(int l = 0 ; l < 8 ; l++)
@@ -364,18 +396,28 @@ void A_matrix_8(float *im, int w, int h, float out[64])
             for(int k = 0 ; k < 8 ; k++)
                 for(int l = 0 ; l < 8 ; l++)
                 {
-                    out[8*k+l] = out[8*k+l] + X[k]*(X[l]*hess[0][j*x+i]+X[8+l]*hess[1][j*w+i])+X[8+k]*(X[l]*hess[2][j*w+i]+X[8+l]*hess[3][j*w+i]);
+                    out[8*k+l] = out[8*k+l] + X[k]*(X[l]*hess[0][j*w+i]+X[8+l]*hess[1][j*w+i])+X[8+k]*(X[l]*hess[2][j*w+i]+X[8+l]*hess[3][j*w+i]);
                 }
         }
+    
+    free(hess[0]);
+    free(hess[1]);
+    free(hess[2]);
+    free(hess[3]);
 }
 
 
 //compute B (vector with same length as the number of parameters, here 8) cith the gradient and the matrix X(i,j)
 //
 
-void B_matrix_8(float *im, int w, int h, float out[8])
+void B_matrix_8(float *im1, float *im2, int w, int h, float out[8])
 {
-    grad_correlation_surface(im, w, h, grad);
+    float *grad[2];
+    grad[0] = malloc(w*h*sizeof(float));
+    grad[1] = malloc(w*h*sizeof(float));
+    float X[16];
+    
+    grad_correlation_surface(im1, im2, w, h, grad);
     
     for(int l = 0 ; l < 8 ; l++)
     {
@@ -392,6 +434,9 @@ void B_matrix_8(float *im, int w, int h, float out[8])
                     out[k] = out[k] + grad[0][j*w+i]*X[k] + grad[1][j*w+i]*X[8+k];
                 }
         }
+    
+    free(grad[0]);
+    free(grad[1]);
 
 }
 
@@ -410,7 +455,7 @@ int main(int argc, char **argv)
 {
     // process input arguments
     if (argc != 4) {
-        frprintf(stderr, "usage:\n \t%s imageIn1 imageIn2 imageWarped2 \n");
+        fprintf(stderr, "usage:\n \t%s imageIn1 imageIn2 imageWarped2 \n");
         //                         0     1       2        3
     }
     
@@ -422,6 +467,19 @@ int main(int argc, char **argv)
     int w, h;
     float *im1 = iio_read_image_float(filename_ImgIn1, &w, &h);
     float *im2 = iio_read_image_float(filename_ImgIn2, &w, &h);
+    
+    //allocate space for derivatives and displacement
+    float *der1[4];
+    float *der2[4];
+    
+    for (int k=0; k<4; k++)
+    {
+        der1[k] = malloc(w*h*sizeof(float));
+        der2[k] = malloc(w*h*sizeof(float));
+    }
+    
+    float delta[8];
+    
     
     //compute derivatives
     compute_directional_derivatives(im1, w, h, der1);
@@ -435,8 +493,8 @@ int main(int argc, char **argv)
     
     for(int i=0 ; i < 4 ; i++)
     {
-        A_matrix_8(der1[i], w, h, A[i]);
-        B_matrix_8(der2[i], w, h, B[i])
+        A_matrix_8(der1[i], der2[i], w, h, A[i]);
+        B_matrix_8(der1[i], der2[i], w, h, B[i]);
     }
     
     for(int j = 0 ; j < h ; j++)
@@ -456,10 +514,15 @@ int main(int argc, char **argv)
     warping_8_parameters(im2, delta, w, h, out2);
     
     //save the output image
-    iio_save_image_float(filename_ImgOut, &w, &h);
+    iio_save_image_float(filename_ImgOut, out2, &w, &h);
     
     //cleanup and exit
     free(out2);
+    for (int k=0; k<4; k++)
+    {
+        free(der1[k]);
+        free(der2[k]);
+    }
     
     return 0;
 }
