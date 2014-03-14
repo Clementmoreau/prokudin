@@ -34,6 +34,48 @@ float getpixel_0(float *x, int w, int h, int i, int j)
 		return x[j*w+i];
 }
 
+// subprogram to solve Ax=B
+
+static int solvps(double *a,double *b,int n)
+{ double *p,*q,*r,*s,t;
+    int j,k;
+    for(j=0,p=a; j<n ;++j,p+=n+1){
+        for(q=a+j*n; q<p ;++q) *p-= *q* *q;
+        if(*p<=0.) return -1;
+        *p=sqrt(*p);
+        for(k=j+1,q=p+n; k<n ;++k,q+=n){
+            for(r=a+j*n,s=a+k*n,t=0.; r<p ;) t+= *r++ * *s++;
+            *q-=t; *q/= *p;
+        }
+    }
+    for(j=0,p=a; j<n ;++j,p+=n+1){
+        for(k=0,q=a+j*n; k<j ;) b[j]-=b[k++]* *q++;
+        b[j]/= *p;
+    }
+    for(j=n-1,p=a+n*n-1; j>=0 ;--j,p-=n+1){
+        for(k=j+1,q=p+n; k<n ;q+=n) b[j]-=b[k++]* *q;
+        b[j]/= *p;
+    }
+    return 0;
+}
+
+// solve Ax=b
+int antislash_symmetric_positive_definite(double *x, double *A,double *b, int n)
+{
+	double *inA = malloc(n*n*sizeof*inA);
+	double *inb = malloc(n*sizeof*inb);
+	for (int i = 0; i < n*n; i++)
+		inA[i] = A[i];
+	for (int i = 0; i < n; i++)
+		inb[i] = b[i];
+	int r = solvps(inA, inb, n);
+	for (int i = 0; i < n; i++)
+		x[i] = inb[i];
+	free(inA);
+	free(inb);
+	return r;
+}
+
 //create parametric transformation matrix (quadratic)
 void fill_matrix_deg2(float *X, int i, int j)
 {
@@ -103,6 +145,50 @@ void compute_directional_derivatives(float *im, int w, int h, float *out[4])
     free(dec[3]);
 }
 
+// subprogram to interpolate the pixels
+
+static float cubic_interpolation(float v[4], float x)
+{
+	return v[1] + 0.5 * x*(v[2] - v[0]
+                           + x*(2.0*v[0] - 5.0*v[1] + 4.0*v[2] - v[3]
+                                + x*(3.0*(v[1] - v[2]) + v[3] - v[0])));
+}
+
+static float bicubic_interpolation_cell(float p[4][4], float x, float y)
+{
+	float v[4];
+	v[0] = cubic_interpolation(p[0], y);
+	v[1] = cubic_interpolation(p[1], y);
+	v[2] = cubic_interpolation(p[2], y);
+	v[3] = cubic_interpolation(p[3], y);
+	return cubic_interpolation(v, x);
+}
+
+typedef float (*getpixel_operator)(float*,int,int,int,int);
+
+static float getpixel_0(float *x, int w, int h, int i, int j)
+{
+	if (i < 0 || i >= w || j < 0 || j >= h)
+		return 0;
+	return x[i+j*w];
+}
+
+float bicubic_interpolation(float *img, int w, int h, float x, float y)
+{
+	x -= 1;
+	y -= 1;
+    
+	getpixel_operator p = getpixel_0;
+    
+	int ix = floor(x);
+	int iy = floor(y);
+	float c[4][4];
+	for (int j = 0; j < 4; j++)
+        for (int i = 0; i < 4; i++)
+            c[i][j] = p(img, w, h, ix + i, iy + j);
+	return bicubic_interpolation_cell(c, x - ix, y - iy);
+}
+
 // warp the image according to a 8-parameter transformation
 //
 // im : input image
@@ -121,7 +207,7 @@ void warping_8_parameters(float *im, float p[8], int w, int h, float *out)
             u=p[0]+p[1]*i+p[2]*j+p[6]*i*i+p[7]*i*j;
             v=p[3]+p[4]*i+p[5]*j+p[6]*i*j+p[7]*j*j;
                                    
-            out[j*w+i]=interpolate_image(im, w, h, i+u, j+v);
+            out[j*w+i]=bicubic_interpolation(im, w, h, i+u, j+v);
                                    
         }
 }
@@ -315,17 +401,7 @@ void B_matrix_8(float *im, int w, int h, float out[8])
 
 void delta_displacement_8(float *A, float *B, float out[8])
 {
-    inverse_matrix(A, A1);
-    
-    //matricial product between A-1 and B
-    for(int j = 0 ; j < 8 ; j++)
-    {
-        out2[j] = 0;
-        for(int k = 0 ; k < 8 ; k++)
-        {
-            out2[j] = out2[j]-A1[8*j+k]*B[k];
-        }
-    }
+    antislash_symmetric_positive_definite(out, A, B, 8);
 }
 
 // main program

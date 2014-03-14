@@ -6,7 +6,7 @@ LFLAGS = -ltiff -ljpeg -lpng -lm
 CFLAGS = -g
 CFLAGS = -O3
 
-all: cut3 join3 translation quantize registration main gauss pyramide
+all: cut3 join3 translation quantize registration main gauss pyramide irani
 
 install: all
 	cp cut3 /Users/clement/bin
@@ -17,6 +17,7 @@ install: all
 	cp main /Users/clement/bin
 	cp gauss /Users/clement/bin
 	cp pyramide /Users/clement/bin
+	cp irani /Users/clement/bin
 
 cut3: cut3.c iio.c
 	$(CC) $(CFLAGS) iio.c cut3.c $(LFLAGS) -o cut3
@@ -41,6 +42,9 @@ gauss: gauss.c iio.c
 
 pyramide: pyramide.c iio.c
 	$(CC) $(CFLAGS) iio.c pyramide.c $(LFLAGS) -o pyramide
+
+irani: irani.c iio.c
+	$(CC) $(CFLAGS) iio.c irani.c $(LFLAGS) -o irani
 
 clean:
 	rm -f cut3 join3 translation quantize registration
