@@ -34,6 +34,68 @@ static float getpixel_0(float *x, int w, int h, int i, int j)
 		return x[j*w+i];
 }
 
+static float getpixel_1(float *x, int w, int h, int i, int j)
+{
+	if (i < 0 || j < 0 || i >= w || j >= h)
+		return 1;
+	else
+		return x[j*w+i];
+}
+
+/*
+
+float getpixel_symmetric(float *x, int w, int h, int i, int j)
+{
+    if (i < 0)
+        int ii=i+w;
+        if(j < 0)
+        {
+            int jj=j+h;
+            return x[jj*w+ii];
+        }
+        else
+            if(j >= h)
+            {
+                int jj=j-h;
+                return x[jj*w+ii];
+            }
+        else
+            return x[j*w+ii];
+    else
+        
+    if (i >= w)
+            int ii=i-w;
+        if(j < 0)
+        {
+            int jj=j+h;
+            return x[jj*w+ii];
+        }
+        else
+        if(j >= h)
+        {
+            int jj=j-h;
+            return x[jj*w+ii];
+        }
+        else
+            return x[j*w+ii];
+    else
+        if(j < 0)
+        {
+            int jj=j+h;
+            return x[jj*w+i];
+        }
+        else
+        if(j >= h)
+        {
+            int jj=j-h;
+            return x[jj*w+ii];
+        }
+        else
+                return x[j*w+ii];
+		return x[j*w+i];
+}
+*/
+
 // subprogram to solve Ax=B
 
 static int solvps(float *a,float *b,int n)
@@ -251,7 +313,10 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
                     int jj=j+k;
                     S = S + (getpixel_0(im, w, h, ii, jj)-getpixel_0(mean, w, h, i, j))*(getpixel_0(im, w, h, ii, jj)-getpixel_0(mean, w, h, i, j));
                 }
-            out[j*w+i]=sqrt(S);
+            if (S>0)
+                out[j*w+i]=sqrt(S);
+            else
+                out[j*w+i]=1;
         }
 }
 
@@ -293,7 +358,7 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
                     S = S + (getpixel_0(im1, w, h, i2, j2)-getpixel_0(mean1, w, h, i, j))*(getpixel_0(im2, w, h, ii2, jj2)-getpixel_0(mean2, w, h, ii, jj));
                 }
             
-            out[j*w+i] = S/(norm1[j*w+i]*norm2[jj*w+ii]);
+            out[j*w+i] = S/(norm1[j*w+i]*getpixel_1(norm2, w, h, ii, jj));
         }
     
     free(mean1);
@@ -356,14 +421,23 @@ void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *ou
     correlation_surface(im1, im2, w, h, 0, -1, surf0_1);
     correlation_surface(im1, im2, w, h, 1, 1, surf11);
     
+
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
+            if(im1[j*w+i] > 50)
         {
-            out[0][j*w+i] = surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i];
-            out[1][j*w+i] = surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i];
-            out[2][j*w+i] = surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i];
-            out[3][j*w+i] = surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i];
+            out[0][j*w+i] = (surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i])/4;
+            out[1][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i])/4;
+            out[2][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i])/4;
+            out[3][j*w+i] = (surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i])/4;
         }
+            else
+            {
+                out[0][j*w+i] = 0;
+                out[1][j*w+i] = 0;
+                out[2][j*w+i] = 0;
+                out[3][j*w+i] = 0;
+            }
     
     free(surf00);
     free(surf01);
@@ -372,6 +446,16 @@ void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *ou
     free(surf_10);
     free(surf11);
     
+}
+
+int is_positive_definite(float A[4])
+{
+    float tr = A[0] + A[3];
+    float det = A[0]*A[3]-A[1]*A[2];
+    if(tr>0 && det>0)
+        return 1;
+    else
+        return 0;
 }
 
 // compute A (square matrix with length = number of parameters, here 8) with the hessian and the matrix X(i,j)
@@ -400,7 +484,13 @@ void A_matrix_8(float *im1, float *im2, int w, int h, float out[64])
         for(int i = 0 ; i < w ; i++)
         {
             fill_matrix_deg2(X, i, j);
+            float T[4];
+            T[0] =hess[0][j*w+i];
+            T[1] =hess[1][j*w+i];
+            T[2] =hess[2][j*w+i];
+            T[3] =hess[3][j*w+i];
             
+            if(is_positive_definite(T))
             for(int k = 0 ; k < 8 ; k++)
                 for(int l = 0 ; l < 8 ; l++)
                 {
@@ -454,7 +544,8 @@ void B_matrix_8(float *im1, float *im2, int w, int h, float out[8])
 
 void delta_displacement_8(float *A, float *B, float *out)
 {
-    antislash_symmetric_positive_definite(out, A, B, 8);
+    int r=antislash_symmetric_positive_definite(out, A, B, 8);
+    assert(r==0);
 }
 
 // main program
@@ -508,7 +599,11 @@ int main(int argc, char **argv)
     {
         A_matrix_8(der1[i], der2[i], w, h, A[i]);
         B_matrix_8(der1[i], der2[i], w, h, B[i]);
+        
+        printf("A[i](1,1) = %g \n", A[i][0]);
     }
+    
+    
     
     
     
@@ -528,6 +623,12 @@ int main(int argc, char **argv)
     // compute displacement
     delta_displacement_8(AA, BB, delta);
     
+    printf("Delta =");
+    for(int i = 0 ; i < 8 ; i++)
+    {
+        printf(" %g \n",delta[i]);
+    }
+    
     
     
     //allocate space for the output image
@@ -536,6 +637,10 @@ int main(int argc, char **argv)
     printf("Warping... \n");
     
     // warp image
+    for(int i = 0 ; i < 8 ; i++)
+    {
+        delta[i]=0;
+    }
     warping_8_parameters(im2, delta, w, h, out2);
     
     printf("Warping : done \n");
