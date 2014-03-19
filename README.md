@@ -51,5 +51,7 @@ usage : irani imgIn1.png imgIn2.png imgWarped2.png
 
 * homographie.sh : script which takes the original glass negative and return the registered image (with orsa-homography method)
 
+* irani1.sh : script which takes the original glass negative, does the homography registration, and the irani warping. This may be very long for big images.
+
 
 
