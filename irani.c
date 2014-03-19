@@ -316,7 +316,7 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
             if (S>0)
                 out[j*w+i]=sqrt(S);
             else
-                out[j*w+i]=1;
+                out[j*w+i]=0.001;
         }
 }
 
@@ -388,8 +388,16 @@ void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
         {
-            out[0][j*w+i] = surf10[j*w+i]-surf00[j*w+i];
-            out[1][j*w+i] = surf01[j*w+i]-surf00[j*w+i];
+            //if (im1[j*w+i] > 500 && im2[j*w+i] > 500)
+            //{
+                out[0][j*w+i] = surf10[j*w+i]-surf00[j*w+i];
+                out[1][j*w+i] = surf01[j*w+i]-surf00[j*w+i];
+            //}
+            //else
+            //{
+            //    out[0][j*w+i] = 0;
+            //    out[1][j*w+i] = 0;
+            //}
         }
     
     free(surf00);
@@ -424,20 +432,22 @@ void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *ou
 
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
-            if(im1[j*w+i] > 50)
         {
-            out[0][j*w+i] = (surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i])/4;
-            out[1][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i])/4;
-            out[2][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i])/4;
-            out[3][j*w+i] = (surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i])/4;
+            //if(im1[j*w+i] > 500 && im2[j*w+i] > 500)
+            //{
+            out[0][j*w+i] = (surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i]);
+            out[1][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i]);
+            out[2][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i]);
+            out[3][j*w+i] = (surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i]);
+            //}
+            //else
+            //{
+            //    out[0][j*w+i] = 0;
+            //    out[1][j*w+i] = 0;
+            //    out[2][j*w+i] = 0;
+            //    out[3][j*w+i] = 0;
+            //}
         }
-            else
-            {
-                out[0][j*w+i] = 0;
-                out[1][j*w+i] = 0;
-                out[2][j*w+i] = 0;
-                out[3][j*w+i] = 0;
-            }
     
     free(surf00);
     free(surf01);
@@ -494,7 +504,7 @@ void A_matrix_8(float *im1, float *im2, int w, int h, float out[64])
             for(int k = 0 ; k < 8 ; k++)
                 for(int l = 0 ; l < 8 ; l++)
                 {
-                    out[8*k+l] = out[8*k+l] + X[k]*(X[l]*hess[0][j*w+i]+X[8+l]*hess[1][j*w+i])+X[8+k]*(X[l]*hess[2][j*w+i]+X[8+l]*hess[3][j*w+i]);
+                    out[8*k+l] = out[8*k+l] + X[l]*(X[k]*hess[0][j*w+i]+X[8+k]*hess[2][j*w+i])+X[8+l]*(X[k]*hess[1][j*w+i]+X[8+k]*hess[3][j*w+i]);
                 }
         }
     
@@ -621,6 +631,11 @@ int main(int argc, char **argv)
     printf("Calcul du vecteur delta... \n");
     
     // compute displacement
+    for(int i = 0 ; i < 8 ; i++)
+    {
+        delta[i]=0;
+    }
+
     delta_displacement_8(AA, BB, delta);
     
     printf("Delta =");
@@ -637,10 +652,7 @@ int main(int argc, char **argv)
     printf("Warping... \n");
     
     // warp image
-    for(int i = 0 ; i < 8 ; i++)
-    {
-        delta[i]=0;
-    }
+    
     warping_8_parameters(im2, delta, w, h, out2);
     
     printf("Warping : done \n");
