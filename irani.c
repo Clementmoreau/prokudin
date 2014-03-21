@@ -316,7 +316,7 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
             if (S>0)
                 out[j*w+i]=sqrt(S);
             else
-                out[j*w+i]=0.001;
+                out[j*w+i]=1;
         }
 }
 
@@ -356,9 +356,12 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
                     int jj2=jj+l;
                     
                     S = S + (getpixel_0(im1, w, h, i2, j2)-getpixel_0(mean1, w, h, i, j))*(getpixel_0(im2, w, h, ii2, jj2)-getpixel_0(mean2, w, h, ii, jj));
+                    S = S/(norm1[j*w+i]*getpixel_1(norm2, w, h, ii, jj));
                 }
-            
-            out[j*w+i] = S/(norm1[j*w+i]*getpixel_1(norm2, w, h, ii, jj));
+            if (S<=1 && S>=0)
+                out[j*w+i] = S;
+            else
+                out[j*w+i]=0;
         }
     
     free(mean1);
@@ -388,16 +391,16 @@ void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
         {
-            //if (im1[j*w+i] > 500 && im2[j*w+i] > 500)
-            //{
+            if (im1[j*w+i] > 200)
+            {
                 out[0][j*w+i] = surf10[j*w+i]-surf00[j*w+i];
                 out[1][j*w+i] = surf01[j*w+i]-surf00[j*w+i];
-            //}
-            //else
-            //{
-            //    out[0][j*w+i] = 0;
-            //    out[1][j*w+i] = 0;
-            //}
+            }
+            else
+            {
+                out[0][j*w+i] = 0;
+                out[1][j*w+i] = 0;
+            }
         }
     
     free(surf00);
@@ -433,20 +436,20 @@ void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *ou
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
         {
-            //if(im1[j*w+i] > 500 && im2[j*w+i] > 500)
-            //{
+            if(im1[j*w+i] > 200)
+            {
             out[0][j*w+i] = (surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i]);
             out[1][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i]);
             out[2][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i]);
             out[3][j*w+i] = (surf01[j*w+i]+surf0_1[j*w+i]-2*surf00[j*w+i]);
-            //}
-            //else
-            //{
-            //    out[0][j*w+i] = 0;
-            //    out[1][j*w+i] = 0;
-            //    out[2][j*w+i] = 0;
-            //    out[3][j*w+i] = 0;
-            //}
+            }
+            else
+            {
+                out[0][j*w+i] = 0;
+                out[1][j*w+i] = 0;
+                out[2][j*w+i] = 0;
+                out[3][j*w+i] = 0;
+            }
         }
     
     free(surf00);
@@ -594,7 +597,6 @@ int main(int argc, char **argv)
     //compute derivatives
     compute_directional_derivatives(im1, w, h, der1);
     compute_directional_derivatives(im2, w, h, der2);
-    
     
     
     //compute A and B for each derivative and sum it
