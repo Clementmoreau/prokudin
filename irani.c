@@ -42,11 +42,11 @@ static float getpixel_1(float *x, int w, int h, int i, int j)
 		return x[j*w+i];
 }
 
-/*
-
 float getpixel_symmetric(float *x, int w, int h, int i, int j)
 {
     if (i < 0)
+    {
+        
         int ii=i+w;
         if(j < 0)
         {
@@ -61,9 +61,11 @@ float getpixel_symmetric(float *x, int w, int h, int i, int j)
             }
         else
             return x[j*w+ii];
+    }
     else
-        
+    {
     if (i >= w)
+    {
             int ii=i-w;
         if(j < 0)
         {
@@ -78,6 +80,7 @@ float getpixel_symmetric(float *x, int w, int h, int i, int j)
         }
         else
             return x[j*w+ii];
+    }
     else
         if(j < 0)
         {
@@ -88,13 +91,13 @@ float getpixel_symmetric(float *x, int w, int h, int i, int j)
         if(j >= h)
         {
             int jj=j-h;
-            return x[jj*w+ii];
+            return x[jj*w+i];
         }
         else
-                return x[j*w+ii];
 		return x[j*w+i];
+    }
 }
-*/
+
 
 // subprogram to solve Ax=B
 
@@ -164,7 +167,7 @@ void apply_translation(float *out, int dx, int dy, float *in, int w, int h)
         {
             int ii = i - dx;
             int jj = j - dy;
-            out[j*w+i] = getpixel_0(in, w, h, ii, jj);
+            out[j*w+i] = getpixel_symmetric(in, w, h, ii, jj);
         }
 }
 
@@ -286,7 +289,7 @@ void mean_window_11(float *im, int w, int h, float *out)
                 {
                     int ii=i+l;
                     int jj=j+k;
-                    S = S + getpixel_0(im, w, h, ii, jj);
+                    S = S + getpixel_symmetric(im, w, h, ii, jj);
                 }
             out[j*w+i]=S/121;
         }
@@ -311,7 +314,7 @@ void norm_2_window_11(float *im, float *mean, int w, int h, float *out)
                 {
                     int ii=i+l;
                     int jj=j+k;
-                    S = S + (getpixel_0(im, w, h, ii, jj)-getpixel_0(mean, w, h, i, j))*(getpixel_0(im, w, h, ii, jj)-getpixel_0(mean, w, h, i, j));
+                    S = S + (getpixel_symmetric(im, w, h, ii, jj)-getpixel_symmetric(mean, w, h, i, j))*(getpixel_symmetric(im, w, h, ii, jj)-getpixel_symmetric(mean, w, h, i, j));
                 }
             if (S>0)
                 out[j*w+i]=sqrt(S);
@@ -355,13 +358,13 @@ void correlation_surface(float *im1, float *im2, int w, int h, int u, int v, flo
                     int ii2=ii+k;
                     int jj2=jj+l;
                     
-                    S = S + (getpixel_0(im1, w, h, i2, j2)-getpixel_0(mean1, w, h, i, j))*(getpixel_0(im2, w, h, ii2, jj2)-getpixel_0(mean2, w, h, ii, jj));
+                    S = S + (getpixel_symmetric(im1, w, h, i2, j2)-getpixel_symmetric(mean1, w, h, i, j))*(getpixel_symmetric(im2, w, h, ii2, jj2)-getpixel_symmetric(mean2, w, h, ii, jj));
                     S = S/(norm1[j*w+i]*getpixel_1(norm2, w, h, ii, jj));
                 }
-            if (S<=1 && S>=0)
+            if (S<=1 && S>=-1)
                 out[j*w+i] = S;
             else
-                out[j*w+i]=0;
+                out[j*w+i]=1;
         }
     
     free(mean1);
@@ -391,7 +394,7 @@ void grad_correlation_surface(float *im1, float *im2, int w, int h, float *out[2
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
         {
-            if (im1[j*w+i] > 200)
+            if (im1[j*w+i] > 100)
             {
                 out[0][j*w+i] = surf10[j*w+i]-surf00[j*w+i];
                 out[1][j*w+i] = surf01[j*w+i]-surf00[j*w+i];
@@ -436,7 +439,7 @@ void hessian_correlation_surface(float *im1, float *im2, int w, int h, float *ou
     for(int j = 0 ; j < h ; j++)
         for(int i = 0 ; i < w ; i++)
         {
-            if(im1[j*w+i] > 200)
+            if(im1[j*w+i] > 100)
             {
             out[0][j*w+i] = (surf10[j*w+i]+surf_10[j*w+i]-2*surf00[j*w+i]);
             out[1][j*w+i] = (surf00[j*w+i]+surf11[j*w+i]-surf10[j*w+i]-surf01[j*w+i]);
