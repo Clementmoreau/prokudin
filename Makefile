@@ -6,7 +6,7 @@ LFLAGS = -ltiff -ljpeg -lpng -lm
 CFLAGS = -O3
 CFLAGS = -g
 
-ALL = cut3 join3 translation quantize registration main gauss pyramide irani echantillon
+ALL = cut3 join3 translation quantize registration main gauss pyramide irani echantillon tile_homography puzzle
 
 all: $(ALL)
 
